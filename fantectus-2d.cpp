@@ -31,6 +31,7 @@ struct GameState {
   bool possible(const Coords&);
   void drawMessage(string, const Coords&);
   void drawMsgStack();
+  void mapQuery(const PixelCoords&);
 
   RenderWindow window;
   SpriteMap tileset;
@@ -43,7 +44,17 @@ struct GameState {
 //void drawMessage(string, const SpriteMap&, RenderWindow&);
 
 vector<int> range(int, int);
-template <class T> inline string to_string(const T&);
+template <class T> inline string to_string(const T&); 
+
+bool left  = false;
+bool right = false;
+bool up    = false;
+bool down  = false; 
+
+bool ulSolid = false;
+bool urSolid = false;
+bool llSolid = false;
+bool lrSolid = false;
 
 //{{{ Main
 int main()
@@ -53,6 +64,7 @@ int main()
 //  game.window.SetFramerateLimit(30); // hardcoded (TODO) framerate
 
   PixelCoords playerPos(0,0); // hardcoded (TODO) initial player position
+  PixelCoords newPlayerPos;
   Coords fpsPos(0,0); // hardcoded (TODO)
   Coords msgPos(0,16); // hardcoded (TODO)
   Coords newPos;
@@ -60,17 +72,11 @@ int main()
   string framerateText;
   //string msgText = "this is a test, this is a test";
 
-  bool left  = false;
-  bool right = false;
-  bool up    = false;
-  bool down  = false;
-
   const int playerSpeed = 1; // pixels per tick
   //}}}
 
   //{{{ Game loop
   while (game.window.IsOpened()){
-    //newPos = playerPos;
     //{{{ Handle Events
     sf::Event Event;
     while (game.window.GetEvent(Event)){
@@ -102,10 +108,19 @@ int main()
     right = game.window.GetInput().IsKeyDown(sf::Key::Right);
     up    = game.window.GetInput().IsKeyDown(sf::Key::Up);
     down  = game.window.GetInput().IsKeyDown(sf::Key::Down);
+
+    newPlayerPos = playerPos;
+     
+    // noclip mode TODO make keyboard toggle
     int playerHorizVel = (- (int)left + (int)right)*playerSpeed;
-    playerPos.first+= playerHorizVel; 
+    newPlayerPos.first+= playerHorizVel; 
     int playerVertVel = (- (int)up + (int)down)*playerSpeed;
-    playerPos.second+= playerVertVel; 
+    newPlayerPos.second+= playerVertVel; 
+    game.mapQuery(newPlayerPos);
+    if (!ulSolid && !urSolid && !llSolid && !lrSolid)
+      playerPos = newPlayerPos;
+
+    
     //}}}
     
     // clear the screen
@@ -118,6 +133,11 @@ int main()
     game.drawMessage(framerateText, fpsPos);
     //game.drawMessage(to_string(ticks), ticksPos); 
  
+    const Coords solidPos1(0,1);
+    const Coords solidPos2(0,2);
+    game.drawMessage(to_string(ulSolid) + to_string(urSolid), solidPos1);
+    game.drawMessage(to_string(llSolid) + to_string(lrSolid), solidPos2);
+
     //game.drawMessage(msgText, msgPos);
     //game.drawMsgStack();
 
@@ -197,6 +217,30 @@ void GameState::drawMsgStack(){
   }
 }
 
+void GameState::mapQuery(const PixelCoords& pos){
+  Coords mapPos(pos.first/24, pos.second/24);
+  int ul = charMap[mapPos.second][mapPos.first];
+  if (ul != 0x05) ulSolid = true;
+  else ulSolid = false;
+  int ur = charMap[mapPos.second][mapPos.first+1];
+  if (ur != 0x05) urSolid = true;
+  else urSolid = false;
+  int ll = charMap[mapPos.second+1][mapPos.first];
+  if (ll != 0x05) llSolid = true;
+  else llSolid = false;
+  int lr = charMap[mapPos.second+1][mapPos.first+1];
+  if (lr != 0x05) lrSolid = true;
+  else lrSolid = false;
+
+  // debug output: leaves a trail
+  /*
+  charMap[mapPos.second][mapPos.first] = 0x04;
+  charMap[mapPos.second][mapPos.first+1] = 0x04; 
+  charMap[mapPos.second+1][mapPos.first] = 0x04; 
+  charMap[mapPos.second+1][mapPos.first+1] = 0x04; 
+  */
+}
+
 vector<int> range(int start, int end){
   vector<int> v;
   if (start < end){
@@ -219,7 +263,9 @@ template <class T> inline string to_string (const T& t){
   return ss.str();
 }
 
-GameState::GameState(): window(sf::VideoMode(24*16, 24*16, 32), "Fantectus 2D", sf::Style::Close), tileset(16, vector<Sprite>(16)), font(16, vector<Sprite>(16)) {  // hardcoded (TODO) size
+GameState::GameState(): window(sf::VideoMode(24*16, 24*16, 32), "Fantectus 2D", sf::Style::Close),
+                        tileset(16, vector<Sprite>(16)),
+                        font(16, vector<Sprite>(16)) {  // hardcoded (TODO) size
   window.SetFramerateLimit(60);
 
   // construct tileset
