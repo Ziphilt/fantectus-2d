@@ -34,6 +34,7 @@ struct GameState {
 
   RenderWindow window;
   SpriteMap tileset;
+  SpriteMap font;
   Map charMap;
   MsgStack msgStack;
 };
@@ -52,7 +53,7 @@ int main()
 //  game.window.SetFramerateLimit(30); // hardcoded (TODO) framerate
 
   PixelCoords playerPos(0,0); // hardcoded (TODO) initial player position
-  Coords fpsPos(16,0); // hardcoded (TODO)
+  Coords fpsPos(0,0); // hardcoded (TODO)
   Coords msgPos(0,16); // hardcoded (TODO)
   Coords newPos;
   Coords ticksPos(16,2);
@@ -111,7 +112,7 @@ int main()
     game.window.Clear(sf::Color(128, 128, 128));
 
     game.drawMap();
-    game.drawObjectAtPixel('@', playerPos); // player
+    game.drawObjectAtPixel(0x1, playerPos); // player
 
     framerateText = to_string(1/game.window.GetFrameTime());
     game.drawMessage(framerateText, fpsPos);
@@ -140,7 +141,7 @@ void GameState::drawMap(){
       cursorX = 0;
       cursorY++;
     }
-    s.SetPosition(cursorX*8, cursorY*8);
+    s.SetPosition(cursorX*24, cursorY*24);
     window.Draw(s);
     cursorX++; 
   }
@@ -149,7 +150,7 @@ void GameState::drawMap(){
 void GameState::drawObject(int c, const Coords& pos){
   Sprite s;
   s = tileset[c/16][c%16];
-  s.SetPosition(pos.first*8, pos.second*8);
+  s.SetPosition(pos.first*24, pos.second*24);
   window.Draw(s);
 }
 
@@ -181,7 +182,7 @@ void GameState::drawMessage(string m, const Coords& pos){
   int messageX = pos.first;
   int messageY = pos.second;
   for (string::iterator p=m.begin(); p!=m.end();++p){
-    s = tileset[(*p)/16][(*p)%16];
+    s = font[(*p)/16][(*p)%16];
     s.SetPosition((messageX+(std::distance(m.begin(),p)))*8, messageY*8);
     window.Draw(s);
   }
@@ -218,7 +219,7 @@ template <class T> inline string to_string (const T& t){
   return ss.str();
 }
 
-GameState::GameState(): window(sf::VideoMode(512, 512, 32), "Fantectus 2D", sf::Style::Close), tileset(16, vector<Sprite>(16)) {  // hardcoded (TODO) size
+GameState::GameState(): window(sf::VideoMode(24*16, 24*16, 32), "Fantectus 2D", sf::Style::Close), tileset(16, vector<Sprite>(16)), font(16, vector<Sprite>(16)) {  // hardcoded (TODO) size
   window.SetFramerateLimit(60);
 
   // construct tileset
@@ -229,7 +230,16 @@ GameState::GameState(): window(sf::VideoMode(512, 512, 32), "Fantectus 2D", sf::
   for (int y = 0; y != 16; ++y){
     for (int x = 0; x != 16; ++x){
       tileset[y][x].SetImage(Image);
-      tileset[y][x].SetSubRect(sf::IntRect(x*8, y*8, (x+1)*8, (y+1)*8));
+      tileset[y][x].SetSubRect(sf::IntRect(x*24, y*24, (x+1)*24, (y+1)*24));
+    }
+  }
+  static sf::Image fontImage;
+  fontImage.SetSmooth(false);
+  fontImage.LoadFromFile("font.png");
+  for (int y = 0; y != 16; ++y){
+    for (int x = 0; x != 16; ++x){
+      font[y][x].SetImage(fontImage);
+      font[y][x].SetSubRect(sf::IntRect(x*8, y*8, (x+1)*8, (y+1)*8));
     }
   }
 
