@@ -14,6 +14,7 @@ using std::binary_search;
 
 using std::string;
 #include <cstdlib>
+#include <cmath>
 //}}}
 
 //{{{ Declarations
@@ -45,6 +46,7 @@ struct GameState {
 
 vector<int> range(int, int);
 template <class T> inline string to_string(const T&); 
+int divideFloor(int, int);
 
 bool left  = false;
 bool right = false;
@@ -117,7 +119,10 @@ int main()
     int playerVertVel = (- (int)up + (int)down)*playerSpeed;
     newPlayerPos.second+= playerVertVel; 
     game.mapQuery(newPlayerPos);
-    if (!ulSolid && !urSolid && !llSolid && !lrSolid)
+    if ((!ulSolid && !urSolid && !llSolid && !lrSolid) ||
+       (newPlayerPos.first % 24 == 0 && newPlayerPos.second % 24 == 0 && !ulSolid) ||
+       (newPlayerPos.first % 24 == 0 && newPlayerPos.second % 24 != 0 && !ulSolid && !llSolid) ||
+       (newPlayerPos.first % 24 != 0 && newPlayerPos.second % 24 == 0 && !ulSolid && !urSolid))
       playerPos = newPlayerPos;
 
     
@@ -127,6 +132,8 @@ int main()
     game.window.Clear(sf::Color(128, 128, 128));
 
     game.drawMap();
+    //game.drawObject(0x4, std::make_pair(divideFloor(playerPos.first, 24), divideFloor(playerPos.second, 24)));
+    //game.drawObject(0x4, std::make_pair(divideFloor(playerPos.first, 24)+1, divideFloor(playerPos.second, 24)+1));
     game.drawObjectAtPixel(0x1, playerPos); // player
 
     framerateText = to_string(1/game.window.GetFrameTime());
@@ -137,6 +144,12 @@ int main()
     const Coords solidPos2(0,2);
     game.drawMessage(to_string(ulSolid) + to_string(urSolid), solidPos1);
     game.drawMessage(to_string(llSolid) + to_string(lrSolid), solidPos2);
+
+    const Coords pixelPos(0,3);
+    const Coords mapPos(0,4);
+    Coords playerMapPos(divideFloor(playerPos.first, 24), divideFloor(playerPos.second, 24));
+    game.drawMessage(to_string(playerPos.first) + ' ' + to_string(playerPos.second), pixelPos);
+    game.drawMessage(to_string(playerMapPos.first) + ' ' + to_string(playerMapPos.second), mapPos);
 
     //game.drawMessage(msgText, msgPos);
     //game.drawMsgStack();
@@ -218,7 +231,32 @@ void GameState::drawMsgStack(){
 }
 
 void GameState::mapQuery(const PixelCoords& pos){
-  Coords mapPos(pos.first/24, pos.second/24);
+  Coords mapPos(divideFloor(pos.first, 24), divideFloor(pos.second, 24));
+  int lowerXBound = 0; // hardcoded (TODO) size
+  int upperXBound = 15;
+  int lowerYBound = 0;
+  int upperYBound = 15;
+  int playerX = mapPos.first;
+  int playerY = mapPos.second;
+  // bounds must be checked before v is indexed with invalid values
+  ulSolid = urSolid = llSolid = lrSolid = false;
+  if (playerX < lowerXBound){
+    ulSolid = true;
+    llSolid = true;
+  }
+  if (playerX > upperXBound){
+    urSolid = true;
+    lrSolid = true;
+  }
+  if (playerY < lowerYBound){
+    ulSolid = true;
+    urSolid = true;
+  }
+  if (playerY > upperYBound){
+    lrSolid = true;
+    llSolid = true;
+  }
+  if (ulSolid || urSolid || llSolid || lrSolid) return;
   int ul = charMap[mapPos.second][mapPos.first];
   if (ul != 0x05) ulSolid = true;
   else ulSolid = false;
@@ -261,6 +299,10 @@ template <class T> inline string to_string (const T& t){
   std::stringstream ss;
   ss << t;
   return ss.str();
+}
+
+int divideFloor(int a, int b){
+  return (int) floor((double) a / (double) b);
 }
 
 GameState::GameState(): window(sf::VideoMode(24*16, 24*16, 32), "Fantectus 2D", sf::Style::Close),
